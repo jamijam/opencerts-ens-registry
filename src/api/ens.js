@@ -66,6 +66,7 @@ const getReverseRegistrarContract = () => {
 
 const getResolverContract = addr => {
   return getWeb3().then(({ web3, networkId }) => {
+    c = new web3.eth.Contract(resolverContract, {at: addr})
     return {
       resolver: web3.eth.Contract(resolverContract).at(addr),
       web3
@@ -76,8 +77,7 @@ const getResolverContract = addr => {
 const getENSContract = () => {
   return getWeb3().then(({ web3, networkId }) => {
     return {
-      ens: web3.eth.Contract(ensContract).at(contracts[networkId].registry),
-      web3
+      ens: new web3.eth.Contract(ensContract, {address: contracts[networkId].registry})
     };
   });
 };
@@ -94,7 +94,6 @@ const getFifsRegistrarContract = () => {
 
 const getENS = async (ensAddress, web3Instance) => {
   var { web3, networkId } = await getWeb3();
-  console.log(networkId);
   if (!ENS) {
     if (!ensAddress) {
       ensAddress = contracts[networkId].registry;
