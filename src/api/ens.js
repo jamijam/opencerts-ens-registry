@@ -29,27 +29,25 @@ async function getWeb3() {
   };
 }
 
-function getNamehash(name) {
-  return getWeb3().then(({ web3 }) => {
-    var node =
-      "0x0000000000000000000000000000000000000000000000000000000000000000";
-    if (name !== "") {
-      var labels = name.split(".");
-      for (var i = labels.length - 1; i >= 0; i--) {
-        node = web3.sha3(node + web3.sha3(labels[i]).slice(2), {
-          encoding: "hex"
-        });
-      }
+async function getNamehash(name) {
+  let { web3 } = await getWeb3();
+  var node =
+    "0x0000000000000000000000000000000000000000000000000000000000000000";
+  if (name !== "") {
+    var labels = name.split(".");
+    for (var i = labels.length - 1; i >= 0; i--) {
+      node = web3.utils.sha3(node + web3.utils.sha3(labels[i]).slice(2), {
+        encoding: "hex"
+      });
     }
-    return node.toString();
-  });
+  }
+  return node.toString();
 }
 
-function getNamehashWithLabelHash(labelHash, nodeHash) {
-  return getWeb3().then(({ web3 }) => {
-    let node = web3.sha3(nodeHash + labelHash.slice(2), { encoding: "hex" });
-    return node.toString();
-  });
+async function getNamehashWithLabelHash(labelHash, nodeHash) {
+  let { web3 } = await getWeb3();
+  let node = web3.utils.sha3(nodeHash + labelHash.slice(2));
+  return node.toString();
 }
 
 const getReverseRegistrarContract = () => {
@@ -64,46 +62,90 @@ const getReverseRegistrarContract = () => {
   });
 };
 
-const getResolverContract = addr => {
-  return getWeb3().then(({ web3, networkId }) => {
-    c = new web3.eth.Contract(resolverContract, {at: addr})
-    return {
-      resolver: web3.eth.Contract(resolverContract).at(addr),
-      web3
-    };
-  });
+const getResolverContract = async addr => {
+  const web3 = await getWeb3();
+  return {
+    resolver: await new web3.eth.Contract(resolverContract, addr),
+    web3
+  };
 };
 
 const getENSContract = () => {
   return getWeb3().then(({ web3, networkId }) => {
     return {
-      ens: new web3.eth.Contract(ensContract, {address: contracts[networkId].registry})
+      ens: new web3.eth.Contract(ensContract, contracts[networkId].registry)
     };
   });
 };
 
-const getFifsRegistrarContract = () => {
-  return getENS().then(async ({ ENS, web3 }) => {
-    let fifsRegistrarAddr = await ENS.owner("test");
-    return {
-      registrar: web3.eth.Contract(fifsRegistrarContract).at(fifsRegistrarAddr),
-      web3
-    };
+const getFifsRegistrarContract = async () => {
+  const ENS = await getENS();
+  const { web3 } = await getWeb3();
+  let fifsRegistrarAddr = await ENS.owner("test");
+  let fifsRegistrar = await new web3.eth.Contract(
+    fifsRegistrarContract,
+    fifsRegistrarAddr
+  );
+  return fifsRegistrar;
+};
+
+const registerRopsten = async name => {
+  const { web3 } = await getWeb3();
+  const registrar = await getFifsRegistrarContract();
+  const registerMethod = await registrar.methods.register(
+    await web3.utils.sha3(name),
+    web3.currentProvider.address
+  );
+  const gasEstimation = (await registerMethod.estimateGas()) * 1.5;
+  return await registerMethod.send({
+    from: web3.currentProvider.address,
+    gas: gasEstimation
   });
 };
 
-const getENS = async (ensAddress, web3Instance) => {
+/**
+ * ENS Interface
+ * Methods
+ * resolver
+ * owner
+ * setSubnodeOwner
+ * setTTL
+ * ttl
+ * setResolver
+ * setOwner
+ */
+
+export const setResolver = async (domain, resolverAddr) => {
+  const { web3 } = await getWeb3();
+  const { ens } = await getENSContract();
+  const namehash = await getNamehash(domain)
+  const methodCall = ens.methods.setResolver(namehash, resolverAddr);
+  const gasEstimation = 80000 // hardcoding this because i don't know why .estimateGas() throws an error 
+  // (await methodCall.estimateGas()) * 1.5;
+  return await methodCall.send({
+    from: web3.currentProvider.address,
+    gas: gasEstimation
+  });
+};
+
+export const getOwner = async domain => {
+  const { web3 } = await getWeb3();
+  const ENS = await getENS();
+  return await ENS.owner(domain);
+};
+
+const getENS = async ensAddress => {
   var { web3, networkId } = await getWeb3();
-  if (!ENS) {
-    if (!ensAddress) {
-      ensAddress = contracts[networkId].registry;
-    }
-    ENS = new ENSconstructor(web3, ensAddress);
-    contracts[networkId] = {};
-    contracts[networkId].registry = ensAddress;
-  }
+  // if (!ENS) {
+  //   if (!ensAddress) {
+  //     ensAddress = contracts[networkId].registry;
+  //   }
+  ENS = new ENSconstructor(web3, ensAddress);
+  contracts[networkId] = {};
+  contracts[networkId].registry = ensAddress;
+  // }
 
-  return { ENS, web3 };
+  return ENS;
 };
 
 const getENSEvent = (event, filter, params) =>
@@ -168,5 +210,6 @@ export {
   getNamehashWithLabelHash,
   getResolverContract,
   watchEvent,
-  getFifsRegistrarContract
+  getFifsRegistrarContract,
+  registerRopsten
 };

@@ -1,0 +1,29 @@
+delete require.cache[require.resolve('./src/api/ens')]
+delete require.cache[require.resolve('./src/api/ens')]
+p = require('./src/api/ens')
+p.setWeb3(web3)
+
+
+# Register using fifs
+
+0x5c023d622a8d61bcf8928bbdb5ea5072486619ed
+
+p.getNamehash("abcedf.test")
+0x6d2d0ffbaed2f222b42d1e3b5cdbd6b0ad5cd74073627d43b00fbd8548856bcb
+
+p.getNamehash("opencerts.test")
+'0x33674fa888770b45d95485c02bf0455718b9a6f9fa7204d14242962c3479e2a0'
+
+# Deployment Notes
+
+deploy ENSRegistry, note registry address
+
+deploy FIFSRegistrar w/ correct rootnode parameter
+e.g to deploy a .test tld
+
+FIFSRegistrar(ENSRegistryAddress, getNamehash("test"))
+then set owner on ENSRegistry
+
+// 0x0 is the root node and is the parent of all tld
+ENS.setSubnodeOwner("0x0", web3.util.sha3("test"), FIFSRegistrar.address) 
+// note that owner of this subnode has to be the registrar address
