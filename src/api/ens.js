@@ -1,8 +1,10 @@
 import ensContract from "../contracts/ensContract.json";
 import reverseRegistrarContract from "../contracts/reverseRegistrarContract.json";
-import resolverContract from "../contracts/resolverContract.json";
+import resolverABI from "../contracts/resolverContract.json";
+// import resolverBin from "../contracts/resolverContract.bin";
 import fifsRegistrarContract from "../contracts/fifsRegistrarContract.json";
 import ENSconstructor from "ethereum-ens";
+import {readFileSync} from "fs"
 
 var contracts = {
   1: {
@@ -12,6 +14,11 @@ var contracts = {
     registry: "0x112234455c3a32fd11230c42e7bccd4a84e02010"
   }
 };
+
+var resolverContractDetails = {
+  ABI: resolverABI,
+  bytecode: readFileSync("./src/contracts/resolverContract.bin").toString() 
+}
 
 let ENS;
 let web3Instance;
@@ -63,12 +70,21 @@ const getReverseRegistrarContract = () => {
 };
 
 const getResolverContract = async addr => {
-  const web3 = await getWeb3();
+  const { web3, networkId } = await getWeb3();
   return {
-    resolver: await new web3.eth.Contract(resolverContract, addr),
-    web3
+    resolver: await new web3.eth.Contract(resolverABI),
   };
 };
+
+export const deployResolverContract = async ({ from }) => {
+  const { web3, networkId } = await getWeb3()
+  const resolverContract = await new web3.eth.Contract(resolverContractDetails.ABI)
+  console.log(resolverContract)
+  const resolver = await resolverContract.deploy({ data: "0x" + resolverContractDetails.bytecode, arguments: [ contracts[networkId.registry] ] })
+  const gasEstimation = await (resolver.estimateGas()) * 2
+  console.log(await resolver.send({ from: from, gas: gasEstimation }))
+}
+
 
 const getENSContract = () => {
   return getWeb3().then(({ web3, networkId }) => {
@@ -120,7 +136,7 @@ export const setResolver = async (domain, resolverAddr) => {
   const { ens } = await getENSContract();
   const namehash = await getNamehash(domain)
   const methodCall = ens.methods.setResolver(namehash, resolverAddr);
-  const gasEstimation = 80000 // hardcoding this because i don't know why .estimateGas() throws an error 
+  const gasEstimation = 80000 // hardcoding this because i don't know why .estimateGas() throws an error, suspect an infura thing 
   // (await methodCall.estimateGas()) * 1.5;
   return await methodCall.send({
     from: web3.currentProvider.address,
@@ -129,7 +145,6 @@ export const setResolver = async (domain, resolverAddr) => {
 };
 
 export const getOwner = async domain => {
-  const { web3 } = await getWeb3();
   const ENS = await getENS();
   return await ENS.owner(domain);
 };

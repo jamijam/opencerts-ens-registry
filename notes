@@ -27,3 +27,12 @@ then set owner on ENSRegistry
 // 0x0 is the root node and is the parent of all tld
 ENS.setSubnodeOwner("0x0", web3.util.sha3("test"), FIFSRegistrar.address) 
 // note that owner of this subnode has to be the registrar address
+
+
+p.default().then(o => z = o)
+z.resolver("opencerts.test").addr()
+
+
+deploy ENS resolver => if it returns null it needs a "data" field which is the bytecode of the contract #TODO: figure out how to programatically generate the bytecode? use truffle?
+
+resolver address 0xcb95ea2F8b9334BfCfDE3A827CE7385F558055d8
