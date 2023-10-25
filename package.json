@@ -45,7 +45,7 @@
   "dependencies": {
     "dotenv": "^5.0.1",
     "eth-ens-namehash": "^2.0.8",
-    "ethereum-ens": "^0.7.4",
+    "ethereum-ens": "^0.7.5",
     "ethereumjs-wallet": "0.6.0",
     "truffle-wallet-provider": "0.0.5"
   }
